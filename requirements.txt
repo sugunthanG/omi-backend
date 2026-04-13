@@ -11,3 +11,4 @@ git+https://github.com/rongardF/tvdatafeed.git
 yfinance
 ta
 joblib
+pydantic[email]
