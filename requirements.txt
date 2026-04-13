@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+python-dotenv
+pydantic-settings
+python-jose
+httpx
+sqlalchemy
+psycopg2-binary
+twilio
+git+https://github.com/rongardF/tvdatafeed.git
+yfinance
+ta
+joblib
