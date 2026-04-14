@@ -32,7 +32,10 @@ async def alert_loop():
 
             signal = result["signal"]
 
-            # Only send alerts for trades
+            # ✅ ALWAYS SEND DATA (important)
+            await manager.broadcast(result)
+
+            # ✅ ONLY send WhatsApp for trades
             if signal in ["BUY", "SELL"]:
                 message = (
                     f"{signal} SIGNAL\n"
@@ -42,14 +45,9 @@ async def alert_loop():
                     f"TP: {result['tp']}"
                 )
 
-                # 1. WebSocket broadcast
-                await manager.broadcast(result)
-
-                # 2. WhatsApp (optional hardcoded for now)
-                # Replace with DB users later
                 await send_whatsapp(message, "+91XXXXXXXXXX")
 
-            await asyncio.sleep(10)  # run every 10 sec
+            await asyncio.sleep(10)
 
         except Exception as e:
             print("Alert loop error:", e)
