@@ -1,15 +1,16 @@
 import asyncio
 import json
-from app.services.trading_service import run_trading_cycle
-from app.core.websocket.manager import manager
-from app.core.config import settings
-from app.api.v1.endpoints.websocket import clients
 
+from app.services.trading_service import run_trading_cycle
+from app.core.websocket.manager import manager   # ✅ IMPORTANT
+from app.core.config import settings
 
 from twilio.rest import Client
 
 
-# Twilio client
+# =========================
+# TWILIO SETUP
+# =========================
 client = Client(
     settings.TWILIO_ACCOUNT_SID,
     settings.TWILIO_AUTH_TOKEN
@@ -17,25 +18,35 @@ client = Client(
 
 
 async def send_whatsapp(message: str, to: str):
-    client.messages.create(
-        body=message,
-        from_=settings.TWILIO_WHATSAPP_FROM,
-        to=f"whatsapp:{to}"
-    )
+    try:
+        client.messages.create(
+            body=message,
+            from_=settings.TWILIO_WHATSAPP_FROM,
+            to=f"whatsapp:{to}"
+        )
+    except Exception as e:
+        print("WhatsApp error:", e)
 
 
-# Background loop
+# =========================
+# BACKGROUND ALERT LOOP
+# =========================
 async def alert_loop():
     while True:
         try:
             result = run_trading_cycle()
 
-            signal = result["signal"]
+            signal = result.get("signal")
 
-            # ✅ ALWAYS SEND DATA (important)
+            # =========================
+            # 🔥 ALWAYS SEND DATA TO UI
+            # =========================
+            print("📡 Broadcasting:", result)   # debug
             await manager.broadcast(result)
 
-            # ✅ ONLY send WhatsApp for trades
+            # =========================
+            # 🔥 WHATSAPP ONLY FOR TRADES
+            # =========================
             if signal in ["BUY", "SELL"]:
                 message = (
                     f"{signal} SIGNAL\n"
@@ -47,8 +58,11 @@ async def alert_loop():
 
                 await send_whatsapp(message, "+91XXXXXXXXXX")
 
+            # =========================
+            # INTERVAL
+            # =========================
             await asyncio.sleep(10)
 
         except Exception as e:
-            print("Alert loop error:", e)
+            print("❌ Alert loop error:", e)
             await asyncio.sleep(5)
