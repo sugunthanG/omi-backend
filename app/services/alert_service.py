@@ -1,8 +1,6 @@
 import asyncio
-import json
-
 from app.services.trading_service import run_trading_cycle
-from app.core.websocket.manager import manager   # ✅ IMPORTANT
+from app.core.websocket.manager import manager
 from app.core.config import settings
 
 from twilio.rest import Client
@@ -17,6 +15,9 @@ client = Client(
 )
 
 
+# =========================
+# SEND WHATSAPP
+# =========================
 async def send_whatsapp(message: str, to: str):
     try:
         client.messages.create(
@@ -24,25 +25,43 @@ async def send_whatsapp(message: str, to: str):
             from_=settings.TWILIO_WHATSAPP_FROM,
             to=f"whatsapp:{to}"
         )
+        print("✅ WhatsApp sent")
     except Exception as e:
-        print("WhatsApp error:", e)
+        print("❌ WhatsApp error:", e)
 
 
 # =========================
-# BACKGROUND ALERT LOOP
+# ALERT LOOP (REAL-TIME ENGINE)
 # =========================
 async def alert_loop():
+    print("🚀 ALERT LOOP STARTED")  # ✅ confirm loop started
+
     while True:
         try:
+            print("⏳ Running trading cycle...")
+
+            # =========================
+            # RUN STRATEGY
+            # =========================
             result = run_trading_cycle()
 
-            signal = result.get("signal")
+            if not result:
+                print("⚠️ No result returned")
+                await asyncio.sleep(5)
+                continue
+
+            signal = result.get("signal", "NO DATA")
+
+            print("📊 RESULT:", result)
 
             # =========================
-            # 🔥 ALWAYS SEND DATA TO UI
+            # 🔥 ALWAYS SEND TO FRONTEND
             # =========================
-            print("📡 Broadcasting:", result)   # debug
-            await manager.broadcast(result)
+            if len(manager.active_connections) > 0:
+                await manager.broadcast(result)
+                print(f"📡 Sent to {len(manager.active_connections)} client(s)")
+            else:
+                print("⚠️ No WebSocket clients connected")
 
             # =========================
             # 🔥 WHATSAPP ONLY FOR TRADES
@@ -59,7 +78,7 @@ async def alert_loop():
                 await send_whatsapp(message, "+91XXXXXXXXXX")
 
             # =========================
-            # INTERVAL
+            # LOOP INTERVAL
             # =========================
             await asyncio.sleep(10)
 
