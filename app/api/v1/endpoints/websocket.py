@@ -1,17 +1,19 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket
+from app.core.websocket.manager import manager
 
 router = APIRouter()
 
-clients = []
-
-
 @router.websocket("/ws/alerts")
 async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    clients.append(websocket)
+    print("🔥 WebSocket HIT")   # 👈 ADD THIS
+
+    await manager.connect(websocket)
+
+    print("✅ Connected")       # 👈 ADD THIS
 
     try:
         while True:
             await websocket.receive_text()
-    except WebSocketDisconnect:
-        clients.remove(websocket)
+    except:
+        print("❌ Disconnected")
+        manager.disconnect(websocket)
