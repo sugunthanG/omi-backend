@@ -1,7 +1,10 @@
 import asyncio
+import json
 from app.services.trading_service import run_trading_cycle
 from app.core.websocket.manager import manager
 from app.core.config import settings
+from app.api.v1.endpoints.websocket import clients
+
 
 from twilio.rest import Client
 
