@@ -2,28 +2,42 @@ import joblib
 import os
 
 
+def get_project_root():
+    """
+    Returns project root directory (omi-backend)
+    Works locally and in production (Render)
+    """
+    return os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../../../")
+    )
+
+
 def load_model(path=None):
     """
-    Loads model from absolute path (works locally + Render)
+    Load ML model safely
     """
 
-    # ✅ BASE DIR → points to /app
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    BASE_DIR = get_project_root()
 
-    # ✅ Correct path (DO NOT repeat 'core')
+    # ✅ Default model path
     if path is None:
-        path = os.path.join(BASE_DIR, "trading_engine", "models", "gold_model_v2.pkl")
+        path = os.path.join(BASE_DIR, "models", "gold_model_v2.pkl")
 
-    # ✅ Debug logs (VERY IMPORTANT in production)
-    print(f"📦 Loading model from: {path}")
-    print(f"📁 Exists: {os.path.exists(path)}")
+    # ✅ Debug logs (keep for now)
+    print("\n========== MODEL DEBUG ==========")
+    print(f"PROJECT ROOT: {BASE_DIR}")
+    print(f"MODEL PATH: {path}")
+    print(f"FILE EXISTS: {os.path.exists(path)}")
+    print("================================\n")
 
+    # ❌ If not found → fail clearly
     if not os.path.exists(path):
-        raise FileNotFoundError(f"❌ Model not found: {path}")
+        raise FileNotFoundError(f"❌ Model not found at: {path}")
 
+    # ✅ Load model
     data = joblib.load(path)
 
-    # ✅ Support both raw model and dict format
+    # ✅ Support dict or direct model
     if isinstance(data, dict):
         return data.get("model", data)
 

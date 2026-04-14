@@ -12,3 +12,5 @@ yfinance
 ta
 joblib
 pydantic[email]
+lightgbm
+scikit-learn
