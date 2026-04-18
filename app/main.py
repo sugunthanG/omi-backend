@@ -13,8 +13,8 @@ def create_app():
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
-            "http://localhost:3000",  # frontend (dev)
-            # "https://your-frontend.vercel.app",  # add later (prod)
+            #"http://localhost:3000",  # frontend (dev)
+            "https://omi-frontend-xi.vercel.app/",  # add later (prod)
         ],
         allow_credentials=True,
         allow_methods=["*"],
