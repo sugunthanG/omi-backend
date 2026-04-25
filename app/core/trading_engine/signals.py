@@ -1,5 +1,5 @@
 # =========================================
-# SIGNAL GENERATION (V12 - CORRECT)
+# SIGNAL GENERATION (FINAL CLEAN VERSION)
 # =========================================
 
 FEATURES = [
@@ -8,54 +8,52 @@ FEATURES = [
     'break_up','break_down'
 ]
 
-# ================= CONFIG =================
-CONF_THRESHOLD = 0.65   # strong filter
+CONF_THRESHOLD = 0.55   # 🔥 lower threshold
 
 
-# =========================================
-# MAIN SIGNAL FUNCTION
-# =========================================
 def generate_signal(model, df):
-
     try:
-        # ================= INPUT =================
         latest = df[FEATURES].iloc[-1:].copy()
 
-        # ================= MODEL =================
         probs = model.predict_proba(latest)[0]
 
         sell_prob = float(probs[0])
         hold_prob = float(probs[1])
         buy_prob = float(probs[2])
 
-        confidence = float(max(probs))
+        # ✅ Directional confidence (0–1 scale)
+        directional_conf = max(sell_prob, buy_prob)
 
-        # ================= PRICE =================
         entry = float(df["Close"].iloc[-1])
         atr = float(df["atr"].iloc[-1])
 
-        trend_up = int(df["trend_up"].iloc[-1])
-        trend_down = int(df["trend_down"].iloc[-1])
+        break_up = int(df["break_up"].iloc[-1])
+        break_down = int(df["break_down"].iloc[-1])
 
-        # ================= DEFAULT =================
         signal = "NO TRADE"
 
-        # ================= CONFIDENCE FILTER =================
-        if confidence < CONF_THRESHOLD:
-            return signal, confidence, entry, atr
-
-        # ================= MODEL DECISION =================
-        pred_class = probs.argmax()
-
         # ================= BUY =================
-        if pred_class == 2 and trend_up == 1:
+        if buy_prob > sell_prob and directional_conf > CONF_THRESHOLD:
             signal = "BUY"
 
+            # 🚀 breakout boost
+            if break_up == 1:
+                directional_conf += 0.05
+
         # ================= SELL =================
-        elif pred_class == 0 and trend_down == 1:
+        elif sell_prob > buy_prob and directional_conf > CONF_THRESHOLD:
             signal = "SELL"
 
-        return signal, confidence, entry, atr
+            if break_down == 1:
+                directional_conf += 0.05
+
+        # ✅ clamp (avoid >1 after boost)
+        directional_conf = min(directional_conf, 1.0)
+
+        # ✅ ROUND HERE (IMPORTANT)
+        directional_conf = round(directional_conf, 4)
+
+        return signal, directional_conf, entry, atr
 
     except Exception as e:
         print(f"Signal Error: {e}")

@@ -9,21 +9,40 @@ import os
 
 MODEL_PATH = "models/gold_model_v2.pkl"
 
-# In-memory state (temporary; later move to Redis/DB)
+# =========================
+# GLOBAL STATE (TEMP)
+# =========================
 active_trades = []
 signal_history = []
+model = None   # ✅ load once
 
 
+# =========================
+# LOAD MODEL (ONLY ONCE)
+# =========================
+def get_model():
+    global model
+
+    if model is None:
+        if not os.path.exists(MODEL_PATH):
+            raise Exception("Model not found")
+
+        model = load_model(MODEL_PATH)
+        print("✅ Model loaded once")
+
+    return model
+
+
+# =========================
+# MAIN TRADING CYCLE
+# =========================
 def run_trading_cycle(whatsapp=False, phone=None):
     global active_trades, signal_history
 
     # =========================
     # LOAD MODEL
     # =========================
-    if not os.path.exists(MODEL_PATH):
-        raise Exception("Model not found")
-
-    model = load_model(MODEL_PATH)
+    model = get_model()
 
     # =========================
     # FETCH DATA
@@ -49,6 +68,10 @@ def run_trading_cycle(whatsapp=False, phone=None):
     # =========================
     signal, prob, entry, atr = generate_signal(model, df)
 
+    # ✅ Convert confidence to %
+    confidence = round(float(prob) * 100, 2)
+
+    # ✅ Final filter
     if prob < 0.65:
         signal = "NO TRADE"
 
@@ -58,11 +81,13 @@ def run_trading_cycle(whatsapp=False, phone=None):
     # RISK MANAGEMENT
     # =========================
     if signal == "BUY":
-        sl = entry - atr * 1.5
-        tp = entry + atr * 3
+        sl = round(entry - atr * 1.5, 2)
+        tp = round(entry + atr * 3, 2)
+
     elif signal == "SELL":
-        sl = entry + atr * 1.5
-        tp = entry - atr * 3
+        sl = round(entry + atr * 1.5, 2)
+        tp = round(entry - atr * 3, 2)
+
     else:
         sl, tp = None, None
 
@@ -70,7 +95,16 @@ def run_trading_cycle(whatsapp=False, phone=None):
     # WHATSAPP ALERT
     # =========================
     if whatsapp and signal in ["BUY", "SELL"] and phone:
-        msg = f"{signal} | Entry:{entry} | SL:{sl} | TP:{tp}"
+        msg = (
+            f"📊 OMI SIGNAL\n"
+            f"Signal: {signal}\n"
+            f"Price: {round(price,2)}\n"
+            f"Entry: {round(entry,2)}\n"
+            f"SL: {sl}\n"
+            f"TP: {tp}\n"
+            f"Confidence: {confidence}%"
+        )
+
         send_whatsapp(msg, phone)
 
     # =========================
@@ -90,12 +124,12 @@ def run_trading_cycle(whatsapp=False, phone=None):
     # RESPONSE
     # =========================
     return {
-        "price": price,
+        "price": round(price, 2),
         "signal": signal,
-        "confidence": prob,
-        "entry": entry,
+        "confidence": confidence,   # ✅ FIXED
+        "entry": round(entry, 2) if entry else None,
         "sl": sl,
         "tp": tp,
-        "active_trades": active_trades[-5:],  # last 5
+        "active_trades": active_trades[-5:],
         "signal_history": signal_history[-10:]
     }
